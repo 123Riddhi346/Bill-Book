@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill Book - Smart POS & Billing App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen text-gray-800 pb-12">
+
+    <!-- Header -->
+    <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <span class="text-2xl">🧾</span>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight" id="headerShopName">Sharma Stores</h1>
+                    <p class="text-xs text-emerald-100">Smart Billing & Invoice Generator</p>
+                </div>
+            </div>
+            <button onclick="toggleSettingsModal()" class="bg-emerald-800 hover:bg-emerald-900 text-white text-xs px-3 py-1.5 rounded flex items-center space-x-1 border border-emerald-600 transition">
+                ⚙️ <span>Store Setup</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 mt-6">
+        <!-- Top Stats Row -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <p class="text-xs text-gray-500 uppercase font-semibold">Today's Sales</p>
+                <p class="text-2xl font-bold text-emerald-700 mt-1" id="statTodaySales">₹0.00</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <p class="text-xs text-gray-500 uppercase font-semibold">Today's Bills</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1" id="statTodayCount">0</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                <p class="text-xs text-gray-500 uppercase font-semibold">Next Invoice #</p>
+                <p class="text-2xl font-bold text-gray-800 mt-1" id="statNextInvoice">#101</p>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex items-center justify-between">
+                <div>
+                    <p class="text-xs text-gray-500 uppercase font-semibold">Mode</p>
+                    <p class="text-sm font-bold text-emerald-600 mt-1">📶 Offline Ready</p>
+                </div>
+                <button onclick="switchTab('history')" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded font-semibold transition">
+                    View Logs
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-300 mb-6 bg-white rounded-t-xl px-4 pt-2 shadow-sm">
+            <button id="tabBtnNew" onclick="switchTab('new')" class="px-5 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-1">
+                <span>➕</span> <span>New Bill</span>
+            </button>
+            <button id="tabBtnHistory" onclick="switchTab('history')" class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center space-x-1">
+                <span>📜</span> <span>Bill History</span>
+            </button>
+            <button id="tabBtnInventory" onclick="switchTab('inventory')" class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center space-x-1">
+                <span>📦</span> <span>Item Catalog</span>
+            </button>
+        </div>
+
+        <!-- SECTION 1: NEW BILL GENERATOR -->
+        <div id="sectionNewBill" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Left: Items Selection / Entry (7 cols) -->
+            <div class="lg:col-span-7 space-y-4">
+                <!-- Quick Add Preset Inventory Items -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-sm text-gray-700 mb-3 flex justify-between items-center">
+                        <span>Quick Add Items</span>
+                        <span class="text-xs text-gray-400 font-normal">Click item to add to bill</span>
+                    </h3>
+                    <div id="quickItemsGrid" class="flex flex-wrap gap-2">
+                        <!-- Dynamic Item Badges -->
+                    </div>
+                </div>
+
+                <!-- Manual Item Ingestion Form -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-sm text-gray-700 mb-3">Add Item Manually</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div class="sm:col-span-2">
+                            <input type="text" id="inputItemName" placeholder="Item Name (e.g., Rice 2 kg)" class="w-full text-sm p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <input type="number" id="inputItemPrice" placeholder="Price (₹)" step="0.01" class="w-full text-sm p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <input type="number" id="inputItemQty" placeholder="Qty" value="1" min="1" class="w-full text-sm p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+                    <button onclick="addItemToCurrentBill()" class="mt-3 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm py-2 rounded-lg transition shadow-sm">
+                        + Add Line Item
+                    </button>
+                </div>
+
+                <!-- Current Bill Items Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                        <h3 class="font-bold text-sm text-gray-700">Current Items</h3>
+                        <button onclick="clearCurrentBill()" class="text-xs text-red-600 hover:text-red-800 font-semibold">Clear All</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase border-b border-gray-200">
+                                <tr>
+                                    <th class="p-3">Item</th>
+                                    <th class="p-3 text-center">Qty</th>
+                                    <th class="p-3 text-right">Price</th>
+                                    <th class="p-3 text-right">Total</th>
+                                    <th class="p-3 text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="billItemsTableBody">
+                                <tr>
+                                    <td colspan="5" class="p-6 text-center text-gray-400 text-xs">No items added yet. Click quick items above or enter manually.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Bill Preview & Calculations (5 cols) -->
+            <div class="lg:col-span-5 space-y-4">
+                <!-- Invoice Settings & Summary Card -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 space-y-4">
+                    <h3 class="font-bold text-gray-800 border-b pb-2">Bill Summary & Adjustments</h3>
+                    
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Discount (%)</label>
+                            <input type="number" id="inputDiscount" value="0" min="0" max="100" onchange="calculateTotals()" onkeyup="calculateTotals()" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Tax / GST (%)</label>
+                            <input type="number" id="inputTax" value="0" min="0" max="50" onchange="calculateTotals()" onkeyup="calculateTotals()" class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-2 text-sm">
+                        <div class="flex justify-between text-gray-600">
+                            <span>Subtotal:</span>
+                            <span id="summarySubtotal" class="font-semibold">₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-red-600">
+                            <span>Discount Amount:</span>
+                            <span id="summaryDiscount" class="font-semibold">- ₹0.00</span>
+                        </div>
+                        <div class="flex justify-between text-blue-600">
+                            <span>Tax Amount:</span>
+                            <span id="summaryTax" class="font-semibold">+ ₹0.00</span>
+                        </div>
+                        <div class="border-t border-gray-300 pt-2 flex justify-between text-base font-bold text-gray-900">
+                            <span>Grand Total:</span>
+                            <span id="summaryGrandTotal" class="text-xl text-emerald-700">₹0.00</span>
+                        </div>
+                    </div>
+
+                    <button onclick="generateAndSaveBill()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg shadow transition flex items-center justify-center space-x-2">
+                        <span>💾</span> <span>Generate & Finalize Bill</span>
+                    </button>
+                </div>
+
+                <!-- Printable Receipt Preview & Dynamic UPI QR -->
+                <div id="receiptCard" class="bg-white p-6 rounded-xl shadow-md border border-gray-200">
+                    <div id="printableReceiptArea" class="bg-white p-4 rounded border border-gray-100">
+                        <div class="text-center border-b pb-3 mb-3">
+                            <h2 class="font-extrabold text-lg text-gray-900 uppercase" id="receiptShopName">Sharma Stores</h2>
+                            <p class="text-xs text-gray-500" id="receiptAddress">Main Market, City</p>
+                            <div class="flex justify-between text-xs text-gray-500 mt-2 font-mono">
+                                <span id="receiptInvoiceNo">Invoice #101</span>
+                                <span id="receiptDate">07/11/2026</span>
+                            </div>
+                        </div>
+
+                        <!-- Rendered Bill Receipt Items -->
+                        <div id="receiptItemsContainer" class="space-y-1.5 text-xs font-mono mb-4">
+                            <!-- Items inserted dynamically -->
+                        </div>
+
+                        <div class="border-t border-dashed border-gray-400 pt-2 text-xs font-mono space-y-1">
+                            <div class="flex justify-between text-gray-600">
+                                <span>Subtotal:</span><span id="recSubtotal">₹0.00</span>
+                            </div>
+                            <div class="flex justify-between text-gray-600">
+                                <span>Disc/Tax:</span><span id="recAdj">₹0.00</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-sm text-gray-900 pt-1 border-t">
+                                <span>TOTAL:</span><span id="recTotal">₹0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- UPI Dynamic QR Section -->
+                        <div class="mt-4 pt-3 border-t text-center">
+                            <p class="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-2">Scan & Pay via UPI</p>
+                            <div id="qrcode" class="flex justify-center p-2 bg-white rounded"></div>
+                            <p class="text-[10px] text-gray-400 mt-1" id="receiptUpiId">UPI: shop@upi</p>
+                        </div>
+                    </div>
+
+                    <!-- Sharing Options -->
+                    <div class="mt-4 flex flex-col gap-2">
+                        <button onclick="shareOnWhatsApp()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg text-sm transition flex items-center justify-center space-x-2">
+                            <span>📱</span> <span>Share via WhatsApp</span>
+                        </button>
+                        <button onclick="downloadReceiptImage()" class="w-full bg-gray-800 hover:bg-gray-900 text-white font-semibold py-2 rounded-lg text-xs transition flex items-center justify-center space-x-2">
+                            <span>🖼️</span> <span>Download Bill Image</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: BILL HISTORY -->
+        <div id="sectionHistory" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                <h3 class="font-bold text-lg text-gray-800">Saved Bill Log & Daily Sales</h3>
+                <button onclick="clearHistoryLog()" class="text-xs text-red-600 hover:text-red-800 font-semibold border border-red-200 px-3 py-1 rounded">
+                    Clear History
+                </button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-100 text-gray-700 text-xs uppercase border-b">
+                        <tr>
+                            <th class="p-3">Invoice #</th>
+                            <th class="p-3">Date & Time</th>
+                            <th class="p-3">Items Count</th>
+                            <th class="p-3 text-right">Grand Total</th>
+                            <th class="p-3 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody">
+                        <!-- History rows inserted dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- SECTION 3: INVENTORY ITEM CATALOG -->
+        <div id="sectionInventory" class="hidden bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-bold text-lg text-gray-800 mb-4">Manage Preset Shop Items</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <input type="text" id="catItemName" placeholder="Item Name (e.g. Oil 1 L)" class="p-2 border rounded text-sm">
+                <input type="number" id="catItemPrice" placeholder="Price (₹)" step="0.01" class="p-2 border rounded text-sm">
+                <button onclick="addCatalogItem()" class="bg-emerald-600 text-white font-semibold text-sm rounded py-2 hover:bg-emerald-700 transition">
+                    + Add to Catalog
+                </button>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead class="bg-gray-100 text-gray-700 text-xs uppercase border-b">
+                        <tr>
+                            <th class="p-3">Item Name</th>
+                            <th class="p-3 text-right">Preset Price</th>
+                            <th class="p-3 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="catalogTableBody">
+                        <!-- Catalog rows inserted dynamically -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Store Setup -->
+    <div id="settingsModal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-xl">
+            <h3 class="font-bold text-lg text-gray-800 border-b pb-2">Configure Store Profile</h3>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Shop Name</label>
+                <input type="text" id="cfgShopName" value="Sharma Stores" class="w-full p-2 border rounded text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Shop Address / Contact</label>
+                <input type="text" id="cfgShopAddress" value="Main Market, City" class="w-full p-2 border rounded text-sm">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-gray-600 mb-1">Your UPI VPA ID (For Dynamic QR)</label>
+                <input type="text" id="cfgUpiId" value="sharma@upi" class="w-full p-2 border rounded text-sm" placeholder="e.g. mobile@upi or username@okicici">
+            </div>
+            <div class="flex justify-end space-x-2 pt-2">
+                <button onclick="toggleSettingsModal()" class="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                <button onclick="saveStoreSettings()" class="px-4 py-2 text-xs font-semibold bg-emerald-600 text-white rounded hover:bg-emerald-700">Save Setup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script>
+        let storeConfig = JSON.parse(localStorage.getItem('bb_store_config')) || {
+            name: "Sharma Stores",
+            address: "Main Market, City",
+            upiId: "sharma@upi"
+        };
+
+        let catalogItems = JSON.parse(localStorage.getItem('bb_catalog')) || [
+            { name: "Rice 2 kg", price: 120 },
+            { name: "Oil 1 L", price: 165 },
+            { name: "Sugar 1 kg", price: 45 },
+            { name: "Wheat Flour 5 kg", price: 210 }
+        ];
+
+        let billHistory = JSON.parse(localStorage.getItem('bb_history')) || [];
+        let nextInvoiceNo = parseInt(localStorage.getItem('bb_next_invoice')) || 104;
+
+        let currentBillItems = [];
+        let currentGrandTotal = 0;
+
+        window.onload = function() {
+            renderStoreProfile();
+            renderCatalog();
+            renderHistory();
+            updateStats();
+            generateQrCode("upi://pay?pa=" + storeConfig.upiId + "&pn=" + encodeURIComponent(storeConfig.name) + "&am=0&cu=INR");
+        };
+
+        function renderStoreProfile() {
+            document.getElementById('headerShopName').innerText = storeConfig.name;
+            document.getElementById('receiptShopName').innerText = storeConfig.name;
+            document.getElementById('receiptAddress').innerText = storeConfig.address;
+            document.getElementById('receiptUpiId').innerText = "UPI: " + storeConfig.upiId;
+            document.getElementById('cfgShopName').value = storeConfig.name;
+            document.getElementById('cfgShopAddress').value = storeConfig.address;
+            document.getElementById('cfgUpiId').value = storeConfig.upiId;
+        }
+
+        function toggleSettingsModal() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        }
+
+        function saveStoreSettings() {
+            storeConfig.name = document.getElementById('cfgShopName').value.trim() || "Sharma Stores";
+            storeConfig.address = document.getElementById('cfgShopAddress').value.trim() || "Main Market";
+            storeConfig.upiId = document.getElementById('cfgUpiId').value.trim() || "sharma@upi";
+            localStorage.setItem('bb_store_config', JSON.stringify(storeConfig));
+            renderStoreProfile();
+            calculateTotals();
+            toggleSettingsModal();
+        }
+
+        function switchTab(tab) {
+            // Hide all sections safely
+            document.getElementById('sectionNewBill').classList.add('hidden');
+            document.getElementById('sectionHistory').classList.add('hidden');
+            document.getElementById('sectionInventory').classList.add('hidden');
+
+            // Reset all tab button styles
+            ['New', 'History', 'Inventory'].forEach(t => {
+                const btn = document.getElementById('tabBtn' + t);
+                if (btn) {
+                    btn.className = "px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center space-x-1";
+                }
+            });
+
+            // Show active section and highlight active tab
+            if (tab === 'new') {
+                document.getElementById('sectionNewBill').classList.remove('hidden');
+                document.getElementById('tabBtnNew').className = "px-5 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-1";
+            } else if (tab === 'history') {
+                document.getElementById('sectionHistory').classList.remove('hidden');
+                document.getElementById('tabBtnHistory').className = "px-5 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-1";
+            } else if (tab === 'inventory') {
+                document.getElementById('sectionInventory').classList.remove('hidden');
+                document.getElementById('tabBtnInventory').className = "px-5 py-2.5 font-bold text-sm border-b-2 border-emerald-600 text-emerald-700 flex items-center space-x-1";
+            }
+        }
+
+        function renderCatalog() {
+            const grid = document.getElementById('quickItemsGrid');
+            const tbody = document.getElementById('catalogTableBody');
+            grid.innerHTML = '';
+            tbody.innerHTML = '';
+
+            catalogItems.forEach((item, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center space-x-1";
+                btn.innerHTML = `<span>${item.name}</span> <span class="font-bold">₹${item.price}</span>`;
+                btn.onclick = () => quickAddItem(item.name, item.price);
+                grid.appendChild(btn);
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold">${item.name}</td>
+                    <td class="p-3 text-right">₹${parseFloat(item.price).toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="removeCatalogItem(${idx})" class="text-xs text-red-600 font-semibold hover:underline">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            localStorage.setItem('bb_catalog', JSON.stringify(catalogItems));
+        }
+
+        function addCatalogItem() {
+            const name = document.getElementById('catItemName').value.trim();
+            const price = parseFloat(document.getElementById('catItemPrice').value);
+            if (!name || isNaN(price)) {
+                alert('Please enter valid item name and price.');
+                return;
+            }
+            catalogItems.push({ name, price });
+            document.getElementById('catItemName').value = '';
+            document.getElementById('catItemPrice').value = '';
+            renderCatalog();
+        }
+
+        function removeCatalogItem(idx) {
+            catalogItems.splice(idx, 1);
+            renderCatalog();
+        }
+
+        function quickAddItem(name, price) {
+            const existing = currentBillItems.find(i => i.name === name);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                currentBillItems.push({ name, price: parseFloat(price), qty: 1 });
+            }
+            renderBillItems();
+        }
+
+        function addItemToCurrentBill() {
+            const name = document.getElementById('inputItemName').value.trim();
+            const price = parseFloat(document.getElementById('inputItemPrice').value);
+            const qty = parseInt(document.getElementById('inputItemQty').value) || 1;
+
+            if (!name || isNaN(price) || price <= 0) {
+                alert('Please enter a valid item name and price.');
+                return;
+            }
+
+            const existing = currentBillItems.find(i => i.name === name);
+            if (existing) {
+                existing.qty += qty;
+            } else {
+                currentBillItems.push({ name, price, qty });
+            }
+
+            document.getElementById('inputItemName').value = '';
+            document.getElementById('inputItemPrice').value = '';
+            document.getElementById('inputItemQty').value = '1';
+
+            renderBillItems();
+        }
+
+        function removeItemFromBill(idx) {
+            currentBillItems.splice(idx, 1);
+            renderBillItems();
+        }
+
+        function updateItemQty(idx, delta) {
+            currentBillItems[idx].qty += delta;
+            if (currentBillItems[idx].qty <= 0) {
+                currentBillItems.splice(idx, 1);
+            }
+            renderBillItems();
+        }
+
+        function clearCurrentBill() {
+            currentBillItems = [];
+            renderBillItems();
+        }
+
+        function renderBillItems() {
+            const tbody = document.getElementById('billItemsTableBody');
+            const recContainer = document.getElementById('receiptItemsContainer');
+            tbody.innerHTML = '';
+            recContainer.innerHTML = '';
+
+            if (currentBillItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 text-xs">No items added yet. Click quick items above or enter manually.</td></tr>`;
+                recContainer.innerHTML = `<p class="text-center text-gray-400">No items on bill</p>`;
+            } else {
+                currentBillItems.forEach((item, idx) => {
+                    const itemTotal = item.price * item.qty;
+                    
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b hover:bg-gray-50";
+                    tr.innerHTML = `
+                        <td class="p-3 font-semibold text-gray-800">${item.name}</td>
+                        <td class="p-3 text-center">
+                            <div class="flex items-center justify-center space-x-1">
+                                <button onclick="updateItemQty(${idx}, -1)" class="w-5 h-5 bg-gray-200 rounded font-bold text-xs">-</button>
+                                <span class="px-1">${item.qty}</span>
+                                <button onclick="updateItemQty(${idx}, 1)" class="w-5 h-5 bg-gray-200 rounded font-bold text-xs">+</button>
+                            </div>
+                        </td>
+                        <td class="p-3 text-right">₹${item.price.toFixed(2)}</td>
+                        <td class="p-3 text-right font-bold text-gray-900">₹${itemTotal.toFixed(2)}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="removeItemFromBill(${idx})" class="text-xs text-red-600 hover:text-red-800">🗑️</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+
+                    const line = document.createElement('div');
+                    line.className = "flex justify-between";
+                    line.innerHTML = `<span>${item.name} x${item.qty}</span><span>₹${itemTotal.toFixed(2)}</span>`;
+                    recContainer.appendChild(line);
+                });
+            }
+
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            const subtotal = currentBillItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+            const discountPct = parseFloat(document.getElementById('inputDiscount').value) || 0;
+            const taxPct = parseFloat(document.getElementById('inputTax').value) || 0;
+
+            const discountAmt = (subtotal * discountPct) / 100;
+            const taxAmt = ((subtotal - discountAmt) * taxPct) / 100;
+            currentGrandTotal = Math.max(0, subtotal - discountAmt + taxAmt);
+
+            document.getElementById('summarySubtotal').innerText = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('summaryDiscount').innerText = `- ₹${discountAmt.toFixed(2)}`;
+            document.getElementById('summaryTax').innerText = `+ ₹${taxAmt.toFixed(2)}`;
+            document.getElementById('summaryGrandTotal').innerText = `₹${currentGrandTotal.toFixed(2)}`;
+
+            document.getElementById('recSubtotal').innerText = `₹${subtotal.toFixed(2)}`;
+            document.getElementById('recAdj').innerText = `₹${(-discountAmt + taxAmt).toFixed(2)}`;
+            document.getElementById('recTotal').innerText = `₹${currentGrandTotal.toFixed(2)}`;
+
+            document.getElementById('receiptInvoiceNo').innerText = `Invoice #${nextInvoiceNo}`;
+            document.getElementById('receiptDate').innerText = new Date().toLocaleDateString('en-GB');
+
+            const upiString = `upi://pay?pa=${storeConfig.upiId}&pn=${encodeURIComponent(storeConfig.name)}&am=${currentGrandTotal.toFixed(2)}&cu=INR`;
+            generateQrCode(upiString);
+        }
+
+        function generateQrCode(upiText) {
+            const container = document.getElementById('qrcode');
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: upiText,
+                width: 110,
+                height: 110,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.M
+            });
+        }
+
+        function generateAndSaveBill() {
+            if (currentBillItems.length === 0) {
+                alert('Please add at least one item to generate a bill.');
+                return;
+            }
+
+            const record = {
+                invoiceNo: `#${nextInvoiceNo}`,
+                timestamp: new Date().toLocaleString(),
+                itemsCount: currentBillItems.length,
+                total: currentGrandTotal,
+                items: [...currentBillItems]
+            };
+
+            billHistory.unshift(record);
+            nextInvoiceNo += 1;
+
+            localStorage.setItem('bb_history', JSON.stringify(billHistory));
+            localStorage.setItem('bb_next_invoice', nextInvoiceNo);
+
+            updateStats();
+            renderHistory();
+            alert(`Bill ${record.invoiceNo} generated & saved successfully!`);
+        }
+
+        function updateStats() {
+            const todayStr = new Date().toLocaleDateString();
+            const todayBills = billHistory.filter(b => new Date(b.timestamp).toLocaleDateString() === todayStr);
+            const todaySales = todayBills.reduce((sum, b) => sum + b.total, 0);
+
+            document.getElementById('statTodaySales').innerText = `₹${todaySales.toFixed(2)}`;
+            document.getElementById('statTodayCount').innerText = todayBills.length;
+            document.getElementById('statNextInvoice').innerText = `#${nextInvoiceNo}`;
+        }
+
+        function renderHistory() {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+
+            if (billHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400 text-xs">No saved bills found.</td></tr>`;
+                return;
+            }
+
+            billHistory.forEach(bill => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-emerald-700">${bill.invoiceNo}</td>
+                    <td class="p-3 text-xs text-gray-600">${bill.timestamp}</td>
+                    <td class="p-3">${bill.itemsCount} items</td>
+                    <td class="p-3 text-right font-extrabold text-gray-900">₹${bill.total.toFixed(2)}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="reloadBillToReceipt('${bill.invoiceNo}')" class="text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-800 font-bold px-2 py-1 rounded">View</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function clearHistoryLog() {
+            if (confirm('Are you sure you want to clear all past bill logs?')) {
+                billHistory = [];
+                localStorage.removeItem('bb_history');
+                updateStats();
+                renderHistory();
+            }
+        }
+
+        function reloadBillToReceipt(invNo) {
+            const bill = billHistory.find(b => b.invoiceNo === invNo);
+            if (!bill) return;
+
+            currentBillItems = [...bill.items];
+            renderBillItems();
+            switchTab('new');
+        }
+
+        function downloadReceiptImage() {
+            const area = document.getElementById('printableReceiptArea');
+            html2canvas(area).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Bill_${document.getElementById('receiptInvoiceNo').innerText}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function shareOnWhatsApp() {
+            let text = `*${storeConfig.name}*\n${document.getElementById('receiptInvoiceNo').innerText} - ${document.getElementById('receiptDate').innerText}\n----------------------\n`;
+            currentBillItems.forEach(i => {
+                text += `${i.name} x${i.qty} = ₹${(i.price * i.qty).toFixed(2)}\n`;
+            });
+            text += `----------------------\n*Total Amount: ₹${currentGrandTotal.toFixed(2)}*\n\nPay via UPI: ${storeConfig.upiId}`;
+
+            const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+            window.open(url, '_blank');
+        }
+    </script>
+</body>
+</html>
